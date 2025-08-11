@@ -18,7 +18,9 @@ p_load(bslib,
        rnaturalearth,
        countrycode,
        RColorBrewer,
-       htmltools)
+       viridis,
+       htmltools,
+       scales)
 
 
 ```
@@ -31,6 +33,10 @@ p_load(bslib,
 
 gap_07 <- gapminder %>% 
            filter(year == 2007)
+
+
+
+### Life Exp
 
 highest_life_exp_country <- gap_07 %>%
   arrange(-lifeExp) %>%
@@ -55,10 +61,39 @@ lowest_life_exp <- gap_07 %>%
   pull(lifeExp) %>% 
   round(1)
 
-
-
 average_life_exp <- gap_07 %>% 
   summarise (weighted_mean = sum(lifeExp * pop)/sum(pop)) %>% 
+  round(1)
+
+
+
+### GDP
+
+highest_GDP_country <- gap_07 %>%
+  arrange(-gdpPercap) %>%
+  head(1) %>%
+  pull(country)
+
+highest_GDP <- gap_07 %>%
+  arrange(-gdpPercap) %>%
+  head(1) %>%
+  pull(gdpPercap) %>% 
+  round(1)
+
+
+lowest_GDP_country <- gap_07 %>%
+  arrange(gdpPercap) %>%
+  head(1) %>%
+  pull(country)
+
+lowest_GDP <- gap_07 %>%
+  arrange(gdpPercap) %>%
+  head(1) %>%
+  pull(gdpPercap) %>% 
+  round(1)
+
+average_GDP <- gap_07 %>% 
+  summarise (weighted_mean = sum(gdpPercap * pop)/sum(pop)) %>% 
   round(1)
 
 ```
@@ -105,6 +140,46 @@ gap_map <- ggplot(combined_df) +
 gap_mapply <- ggplotly(gap_map, tooltip = "text")
 ```
 
+
+
+```{r}
+#| echo: false
+#| results: "hide"
+#| message: false
+#| warning: false
+#| fig.show: "hide"
+
+
+combined_df_gdp <-
+  left_join(country_shapes, gap_07, by = c("adm0_a3" = "country_code")) %>%
+  mutate(tooltip_label = paste(
+                                country,
+                                scales::label_dollar(
+                                  accuracy = 0.01, 
+                                  scale_cut = cut_short_scale())(gdpPercap),
+                                sep = ": "
+  )
+  
+                    # paste(country, scales::dollar(gdpPercap))
+         
+           # OR
+                     # paste0(country, 
+                     #    ": $",
+                     #   round(gdpPercap, 2)) # this is the text that the tooltip will show alternative
+  )
+
+
+gap_map_gdp <- ggplot(combined_df_gdp) +
+  geom_sf(aes(fill = gdpPercap, text = tooltip_label)) +
+  theme_void() +
+  scale_fill_gradient(low = "#5c5300", high = "#FFD700") + # light yellow → deep orange
+  theme(legend.position = "none")
+
+gap_gdp_mapply <- ggplotly(gap_map_gdp, tooltip = "text")
+```
+
+
+
 ```{r}
 
 top_20 <- gap_07 %>%
@@ -134,7 +209,33 @@ t20plot <- ggplot(top_20,
 t20plottly <- ggplotly(t20plot, tooltip = "text")
 ```
 
-# Home
+
+```{r}
+data <- gap_07 %>%
+  mutate(text = paste(
+    "<span style='font-size:16px;'><b>", country, "</b></span><br>",
+    "<br><b>Population (M):</b> ", pop,
+    "<br><b>Life Expectancy (years):</b> ", round(lifeExp, 2),
+    "<br><b>Gdp per capita:</b> $", round(gdpPercap, 2),
+    sep=""))
+
+p <- data %>%
+  ggplot(aes(x=gdpPercap, y=lifeExp, size=pop, color=continent, text=text)) +
+    geom_point(alpha=0.7) +
+    scale_size(range = c(1.4, 19)) +
+    scale_color_viridis(discrete=TRUE, guide=FALSE) +
+  geom_smooth(method = "loess", formula = 'y ~ x', se = FALSE, color = "black") +
+    theme_classic() +
+    theme(legend.position="none") +
+  labs(x = "GDP per capita ($)",
+       y = "Life expectancy (years)")
+
+pp <- ggplotly(p, tooltip="text")
+
+```
+
+
+# Life Exp
 
 ## Row 1 {height="35%"}
 
@@ -142,7 +243,7 @@ t20plottly <- ggplotly(t20plot, tooltip = "text")
 
 ```{r}
 value_box(
-  title = "Lowest Life Expectancy (2007)",
+  title = "Lowest Life Expectancy",
   value = lowest_life_exp,
   showcase = bsicons::bs_icon("heart-pulse-fill"),
   theme = value_box_theme(bg = "#00EE00"),
@@ -154,7 +255,7 @@ value_box(
 
 ```{r}
 value_box(
-  title = "Average Life Expectancy (2007)",
+  title = "Average Global Life Expectancy",
   value = average_life_exp,
   showcase = bsicons::bs_icon("heart-pulse-fill"),
   theme = value_box_theme(bg = "#00CD00")
@@ -165,7 +266,7 @@ value_box(
 
 ```{r}
 value_box(
-  title = "Highest Life Expectancy (2007)",
+  title = "Highest Life Expectancy",
   value = highest_life_exp,
   showcase = bsicons::bs_icon("heart-pulse-fill"),
   theme = value_box_theme(bg = "#008B00"),
@@ -190,6 +291,76 @@ gap_mapply
 t20plottly
 ```
 
+
+
+
+
+# GDP
+
+## Row 1 {height="35%"}
+
+### 
+
+```{r}
+value_box(
+  title = "Lowest GDP",
+  value = lowest_GDP,
+  showcase = bsicons::bs_icon("currency-dollar"),
+  theme = value_box_theme(bg = "#8B6914"),
+  p(lowest_GDP_country)
+)
+```
+
+### 
+
+```{r}
+value_box(
+  title = "Average Global GDP",
+  value = average_life_exp,
+  showcase = bsicons::bs_icon("currency-dollar"),
+  theme = value_box_theme(bg = "#CD9B1D")
+)
+```
+
+### 
+
+```{r}
+value_box(
+  title = "Highest GDP",
+  value = highest_GDP,
+  showcase = bsicons::bs_icon("currency-dollar"),
+  theme = value_box_theme(bg = "#FFC125"),
+  p(highest_GDP_country)
+)
+```
+
+## Row 2 {height="75%"}
+
+### Column 1 {width="60%"}
+
+```{r}
+#| title: "Map of countries by GDP per capita"
+gap_gdp_mapply
+```
+
+### Column 2
+
+```{r}
+#| title: "Life expectancy (years) vs GDP ($) per country"
+
+pp
+```
+
+
+
+
+
+
+
+
+
+
+
 # Download data
 
 The data used in this dashboard can be seen below and downloaded as a CSV file.
@@ -212,7 +383,7 @@ browsable(
 
 ![](gapminder-logo.svg)
 
-This data comes from the 'gapminder' package in R and is original sourced from the Gapminder foundation.
+This data comes from the 'gapminder' package in R and is originally sourced from the Gapminder foundation.
 
 Gapminder Foundation is a non-profit venture registered in Stockholm, Sweden, that promotes sustainable global development and achievement of the United Nations Millennium Development Goals by increased use and understanding of statistics and other information about social, economic, and environmental development at local, national, and global levels
 
